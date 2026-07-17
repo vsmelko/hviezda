@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recepcia — správa izieb</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#EEF1F4;
+    --card:#FFFFFF;
+    --panel:#16212E;
+    --panel-2:#1E2C3C;
+    --ink:#182430;
+    --muted:#6A7788;
+    --line:#E2E7EC;
+    --accent:#0E8F8B;      /* teal */
+    --accent-ink:#0A6663;
+    --free:#12A67C;
+    --free-bg:#E7F6F0;
+    --occ:#C4842A;         /* warm amber */
+    --occ-bg:#FBF1DF;
+    --over:#D0455B;        /* coral red */
+    --over-bg:#FBE7EA;
+    --shadow:0 1px 2px rgba(16,30,45,.06),0 8px 24px rgba(16,30,45,.06);
+    --shadow-lg:0 12px 40px rgba(16,30,45,.18);
+    --r:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:var(--canvas);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    display:flex;
+    min-height:100vh;
+  }
+  button{font-family:inherit;cursor:pointer;border:none;background:none}
+  input,select{font-family:inherit}
+
+  /* ---------- Sidebar / elevator panel ---------- */
+  .side{
+    width:216px;flex-shrink:0;
+    background:var(--panel);
+    color:#DDE5EE;
+    display:flex;flex-direction:column;
+    padding:20px 16px;
+    position:sticky;top:0;height:100vh;
+  }
+  .brand{display:flex;align-items:center;gap:10px;padding:4px 6px 18px}
+  .brand .mark{
+    width:34px;height:34px;border-radius:9px;
+    background:linear-gradient(150deg,var(--accent),#0B6A67);
+    display:grid;place-items:center;font-weight:700;color:#fff;font-family:'Space Grotesk';
+  }
+  .brand b{font-size:15px;letter-spacing:.2px;color:#fff;font-weight:600}
+  .brand span{display:block;font-size:11px;color:#7E8CA0;font-weight:500}
+
+  .floors-label{font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:#65748A;margin:6px 6px 8px;font-weight:600}
+  .floors{display:flex;flex-direction:column;gap:6px;overflow:auto}
+  .floor-btn{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 14px;border-radius:10px;color:#B9C4D2;
+    font-weight:500;font-size:14px;transition:.15s;text-align:left;
+  }
+  .floor-btn .n{font-family:'Space Grotesk';font-size:16px;font-weight:600}
+  .floor-btn .cnt{font-size:11px;color:#697A90;font-weight:600;
+    background:rgba(255,255,255,.06);padding:2px 7px;border-radius:20px}
+  .floor-btn:hover{background:var(--panel-2);color:#fff}
+  .floor-btn.active{background:var(--accent);color:#fff}
+  .floor-btn.active .cnt{background:rgba(255,255,255,.18);color:#fff}
+
+  .side-foot{margin-top:auto;padding-top:14px;border-top:1px solid rgba(255,255,255,.07)}
+  .mini-stat{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 6px;color:#93A1B4}
+  .mini-stat b{color:#fff;font-family:'Space Grotesk'}
+
+  /* ---------- Main ---------- */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .topbar{
+    background:rgba(255,255,255,.72);backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line);
+    padding:16px 28px;display:flex;align-items:center;gap:16px;
+    position:sticky;top:0;z-index:20;flex-wrap:wrap;
+  }
+  .topbar h1{font-size:19px;font-weight:600;letter-spacing:-.01em}
+  .topbar h1 small{color:var(--muted);font-weight:500;font-size:13px;margin-left:4px}
+  .search{position:relative;margin-left:auto;flex:1;max-width:320px;min-width:180px}
+  .search input{
+    width:100%;padding:9px 12px 9px 34px;border:1px solid var(--line);
+    border-radius:10px;font-size:13.5px;background:#fff;color:var(--ink);outline:none;transition:.15s;
+  }
+  .search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(14,143,139,.12)}
+  .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted)}
+  .btn{
+    display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:10px;
+    font-weight:600;font-size:13.5px;transition:.15s;white-space:nowrap;
+  }
+  .btn-primary{background:var(--accent);color:#fff}
+  .btn-primary:hover{background:var(--accent-ink)}
+  .btn-ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+  .btn-ghost:hover{border-color:#C9D2DB;background:#FAFBFC}
+
+  /* stat strip */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:22px 28px 6px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:15px 17px;box-shadow:var(--shadow)}
+  .stat .lab{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+  .stat .val{font-family:'Space Grotesk';font-size:27px;font-weight:600;margin-top:3px;line-height:1}
+  .stat .sub{font-size:12px;color:var(--muted);margin-top:4px}
+  .stat .bar{height:5px;border-radius:4px;background:var(--line);margin-top:10px;overflow:hidden}
+  .stat .bar i{display:block;height:100%;background:var(--accent);border-radius:4px;transition:width .4s}
+
+  .alerts{padding:8px 28px 0;display:flex;flex-wrap:wrap;gap:8px}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:6px 11px;border-radius:20px}
+  .chip.in{background:var(--free-bg);color:var(--accent-ink)}
+  .chip.out{background:var(--occ-bg);color:#8A5B14}
+  .chip.over{background:var(--over-bg);color:var(--over)}
+  .chip .dot{width:7px;height:7px;border-radius:50%}
+  .chip.in .dot{background:var(--free)} .chip.out .dot{background:var(--occ)} .chip.over .dot{background:var(--over)}
+
+  /* rooms grid */
+  .floor-head{padding:20px 28px 4px;display:flex;align-items:baseline;gap:10px}
+  .floor-head h2{font-family:'Space Grotesk';font-size:20px;font-weight:600}
+  .floor-head span{color:var(--muted);font-size:13px}
+  .grid{padding:14px 28px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:16px}
+
+  .room{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+    box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;transition:.2s}
+  .room.hit{outline:2px solid var(--accent);outline-offset:1px}
+  .room-top{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 12px}
+  .room-num{display:flex;align-items:center;gap:10px}
+  .room-num .no{font-family:'Space Grotesk';font-size:20px;font-weight:600}
+  .room-num .tag{font-size:11px;font-weight:600;color:var(--muted);background:var(--canvas);padding:2px 8px;border-radius:6px}
+  .room .status{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:3px 9px;border-radius:20px}
+  .status.free{background:var(--free-bg);color:var(--free)}
+  .status.part{background:var(--occ-bg);color:#8A5B14}
+  .status.full{background:var(--occ-bg);color:var(--occ)}
+  .status.over{background:var(--over-bg);color:var(--over)}
+
+  .beds{padding:0 12px 12px;display:flex;flex-direction:column;gap:8px}
+  .bed{border:1px solid var(--line);border-radius:10px;padding:10px 12px;transition:.15s}
+  .bed.empty{border-style:dashed;display:flex;align-items:center;justify-content:space-between;color:var(--muted)}
+  .bed.empty button{color:var(--accent);font-weight:600;font-size:12.5px;display:inline-flex;align-items:center;gap:4px}
+  .bed.filled{border-left:3px solid var(--occ);background:#FEFCF8}
+  .bed.filled.active{border-left-color:var(--free);background:#F8FDFB}
+  .bed.filled.over{border-left-color:var(--over);background:#FEF7F8}
+  .bed .g-name{font-weight:600;font-size:14px;display:flex;align-items:center;gap:7px}
+  .bed .g-dates{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+  .bed .g-note{font-size:11.5px;color:var(--muted);margin-top:3px;font-style:italic}
+  .bed .st-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .st-dot.active{background:var(--free)} .st-dot.up{background:var(--occ)} .st-dot.over{background:var(--over)}
+  .bed .g-actions{display:flex;gap:6px;margin-top:9px}
+  .bed .g-actions button{font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:7px;border:1px solid var(--line);color:var(--ink);background:#fff;transition:.12s}
+  .bed .g-actions button:hover{background:var(--canvas)}
+  .bed .g-actions button.del:hover{background:var(--over-bg);color:var(--over);border-color:var(--over-bg)}
+
+  .room-foot{margin-top:auto;padding:10px 14px;border-top:1px solid var(--line);display:flex;justify-content:flex-end}
+  .room-foot button{font-size:12px;color:var(--muted);font-weight:600}
+  .room-foot button:hover{color:var(--over)}
+
+  .empty-floor{padding:60px 28px;text-align:center;color:var(--muted)}
+  .empty-floor svg{opacity:.4;margin-bottom:12px}
+  .empty-floor p{font-size:14px}
+
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(16,26,38,.5);backdrop-filter:blur(3px);
+    display:none;align-items:center;justify-content:center;z-index:100;padding:20px}
+  .overlay.on{display:flex}
+  .modal{background:#fff;border-radius:16px;box-shadow:var(--shadow-lg);width:100%;max-width:420px;
+    padding:24px;animation:pop .18s ease}
+  @keyframes pop{from{opacity:0;transform:translateY(8px) scale(.98)}to{opacity:1;transform:none}}
+  .modal h3{font-size:17px;font-weight:600;margin-bottom:3px}
+  .modal .msub{font-size:13px;color:var(--muted);margin-bottom:18px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:6px;color:#3B4A5A}
+  .field input,.field select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;
+    font-size:14px;color:var(--ink);outline:none;transition:.15s;background:#fff}
+  .field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(14,143,139,.12)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .err{color:var(--over);font-size:12.5px;margin-top:-6px;margin-bottom:12px;display:none}
+  .err.on{display:block}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+
+  .move-list{max-height:300px;overflow:auto;margin:4px 0 16px;border:1px solid var(--line);border-radius:10px}
+  .move-grp{padding:8px 12px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;background:var(--canvas)}
+  .move-opt{width:100%;text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13.5px;display:flex;justify-content:space-between;transition:.12s}
+  .move-opt:hover{background:var(--free-bg)}
+  .move-opt b{font-family:'Space Grotesk'}
+  .move-opt span{color:var(--muted);font-size:12px}
+  .move-empty{padding:24px;text-align:center;color:var(--muted);font-size:13px}
+
+  /* mobile */
+  @media(max-width:820px){
+    body{flex-direction:column}
+    .side{width:100%;height:auto;position:static;flex-direction:column;padding:14px}
+    .brand{padding-bottom:12px}
+    .floors{flex-direction:row;overflow-x:auto;gap:8px;padding-bottom:4px}
+    .floor-btn{flex-direction:column;align-items:center;gap:3px;min-width:64px;padding:9px}
+    .floors-label,.side-foot{display:none}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .topbar{padding:14px 18px}
+    .grid,.floor-head,.stats,.alerts{padding-left:18px;padding-right:18px}
+  }
+</style>
+</head>
+<body>
+  <aside class="side">
+    <div class="brand">
+      <div class="mark">R</div>
+      <div><b>Recepcia</b><span>Správa izieb</span></div>
+    </div>
+    <div class="floors-label">Poschodia</div>
+    <div class="floors" id="floors"></div>
+    <div class="side-foot">
+      <div class="mini-stat"><span>Voľné lôžka</span><b id="ms-free">0</b></div>
+      <div class="mini-stat"><span>Obsadenosť</span><b id="ms-occ">0%</b></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <h1>Poschodie <span id="tb-floor">1</span><small id="tb-count"></small></h1>
+      <div class="search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="search" type="text" placeholder="Hľadať hosťa podľa mena…" autocomplete="off">
+      </div>
+      <button class="btn btn-primary" id="addRoomBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+        Pridať izbu
+      </button>
+    </div>
+
+    <div class="stats" id="stats"></div>
+    <div class="alerts" id="alerts"></div>
+
+    <div class="floor-head">
+      <h2 id="fh-title">1. poschodie</h2>
+      <span id="fh-sub"></span>
+    </div>
+    <div id="content"></div>
+  </main>
+
+  <!-- Guest modal -->
+  <div class="overlay" id="guestOverlay">
+    <div class="modal">
+      <h3 id="gm-title">Ubytovať hosťa</h3>
+      <div class="msub" id="gm-sub"></div>
+      <div class="field">
+        <label>Meno hosťa</label>
+        <input id="gm-name" type="text" placeholder="Meno a priezvisko">
+      </div>
+      <div class="row2">
+        <div class="field"><label>Príchod</label><input id="gm-from" type="date"></div>
+        <div class="field"><label>Odchod</label><input id="gm-to" type="date"></div>
+      </div>
+      <div class="field"><label>Poznámka <span style="color:var(--muted);font-weight:400">(voliteľné)</span></label><input id="gm-note" type="text" placeholder="napr. neskorý príchod, rezervácia parkovania…"></div>
+      <div class="err" id="gm-err"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-close>Zrušiť</button>
+        <button class="btn btn-primary" id="gm-save">Uložiť</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add room modal -->
+  <div class="overlay" id="roomOverlay">
+    <div class="modal">
+      <h3>Pridať izbu</h3>
+      <div class="msub" id="rm-sub"></div>
+      <div class="field"><label>Číslo izby</label><input id="rm-num" type="text" placeholder="napr. 101"></div>
+      <div class="field"><label>Počet postelí</label>
+        <select id="rm-beds"><option value="2">2 postele</option><option value="3">3 postele</option></select>
+      </div>
+      <div class="err" id="rm-err"></div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-close>Zrušiť</button>
+        <button class="btn btn-primary" id="rm-save">Pridať izbu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Move modal -->
+  <div class="overlay" id="moveOverlay">
+    <div class="modal">
+      <h3>Presunúť hosťa</h3>
+      <div class="msub" id="mv-sub"></div>
+      <div class="move-list" id="mv-list"></div>
+      <div class="modal-actions"><button class="btn btn-ghost" data-close>Zrušiť</button></div>
+    </div>
+  </div>
+
+<script>
+const KEY='hotelState_v2';
+const FLOORS=8;
+let state=load();
+let activeFloor=1;
+let query='';
+
+function load(){
+  try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&s.rooms&&s.rooms.length)return s;}catch(e){}
+  return {rooms:[{id:1,floor:1,number:"101",beds:[null,null]},{id:2,floor:1,number:"102",beds:[null,null]},{id:3,floor:1,number:"103",beds:[null,null]},{id:4,floor:1,number:"104",beds:[null,null]},{id:5,floor:1,number:"105",beds:[null,null]},{id:6,floor:1,number:"106",beds:[null,null]},{id:7,floor:1,number:"107",beds:[null,null]},{id:8,floor:1,number:"108",beds:[null,null]},{id:9,floor:1,number:"109",beds:[null,null]},{id:10,floor:1,number:"110",beds:[null,null]},{id:11,floor:1,number:"111",beds:[null,null]},{id:12,floor:1,number:"112",beds:[null,null]},{id:13,floor:1,number:"113",beds:[null,null]},{id:14,floor:1,number:"114",beds:[null,null]},{id:15,floor:1,number:"115",beds:[null,null]},{id:16,floor:1,number:"116",beds:[null,null]},{id:17,floor:1,number:"117",beds:[null,null]},{id:18,floor:1,number:"118",beds:[null,null]},{id:19,floor:1,number:"119",beds:[null,null]},{id:20,floor:1,number:"120",beds:[null,null]},{id:21,floor:1,number:"121",beds:[null,null]},{id:22,floor:1,number:"122",beds:[null,null]},{id:23,floor:1,number:"123",beds:[null,null]},{id:24,floor:1,number:"124",beds:[null,null]},{id:25,floor:1,number:"125",beds:[null,null]},{id:26,floor:2,number:"201",beds:[null,null]},{id:27,floor:2,number:"202",beds:[null,null]},{id:28,floor:2,number:"203",beds:[null,null]},{id:29,floor:2,number:"204",beds:[null,null]},{id:30,floor:2,number:"205",beds:[null,null]},{id:31,floor:2,number:"206",beds:[null,null]},{id:32,floor:2,number:"207",beds:[null,null]},{id:33,floor:2,number:"208",beds:[null,null]},{id:34,floor:2,number:"209",beds:[null,null]},{id:35,floor:2,number:"210",beds:[null,null]},{id:36,floor:2,number:"211",beds:[null,null]},{id:37,floor:2,number:"212",beds:[null,null]},{id:38,floor:2,number:"213",beds:[null,null]},{id:39,floor:2,number:"214",beds:[null,null]},{id:40,floor:2,number:"215",beds:[null,null]},{id:41,floor:2,number:"216",beds:[null,null]},{id:42,floor:2,number:"217",beds:[null,null]},{id:43,floor:2,number:"218",beds:[null,null]},{id:44,floor:2,number:"219",beds:[null,null]},{id:45,floor:2,number:"220",beds:[null,null]},{id:46,floor:2,number:"221",beds:[null,null]},{id:47,floor:2,number:"222",beds:[null,null]},{id:48,floor:2,number:"223",beds:[null,null]},{id:49,floor:2,number:"224",beds:[null,null]},{id:50,floor:2,number:"225",beds:[null,null]},{id:51,floor:3,number:"301",beds:[null,null]},{id:52,floor:3,number:"302",beds:[null,null]},{id:53,floor:3,number:"303",beds:[null,null]},{id:54,floor:3,number:"304",beds:[null,null]},{id:55,floor:3,number:"305",beds:[null,null]},{id:56,floor:3,number:"306",beds:[null,null]},{id:57,floor:3,number:"307",beds:[null,null]},{id:58,floor:3,number:"308",beds:[null,null]},{id:59,floor:3,number:"309",beds:[null,null]},{id:60,floor:3,number:"310",beds:[null,null]},{id:61,floor:3,number:"311",beds:[null,null]},{id:62,floor:3,number:"312",beds:[null,null]},{id:63,floor:3,number:"313",beds:[null,null]},{id:64,floor:3,number:"314",beds:[null,null]},{id:65,floor:3,number:"315",beds:[null,null]},{id:66,floor:3,number:"316",beds:[null,null]},{id:67,floor:3,number:"317",beds:[null,null]},{id:68,floor:3,number:"318",beds:[null,null]},{id:69,floor:3,number:"319",beds:[null,null]},{id:70,floor:3,number:"320",beds:[null,null]},{id:71,floor:3,number:"321",beds:[null,null]},{id:72,floor:3,number:"322",beds:[null,null]},{id:73,floor:3,number:"323",beds:[null,null]},{id:74,floor:3,number:"324",beds:[null,null]},{id:75,floor:3,number:"325",beds:[null,null]},{id:76,floor:4,number:"401",beds:[null,null]},{id:77,floor:4,number:"402",beds:[null,null]},{id:78,floor:4,number:"403",beds:[null,null]},{id:79,floor:4,number:"404",beds:[null,null]},{id:80,floor:4,number:"405",beds:[null,null]},{id:81,floor:4,number:"406",beds:[null,null]},{id:82,floor:4,number:"407",beds:[null,null]},{id:83,floor:4,number:"408",beds:[null,null]},{id:84,floor:4,number:"409",beds:[null,null]},{id:85,floor:4,number:"410",beds:[null,null]},{id:86,floor:4,number:"411",beds:[null,null]},{id:87,floor:4,number:"412",beds:[null,null]},{id:88,floor:4,number:"413",beds:[null,null]},{id:89,floor:4,number:"414",beds:[null,null]},{id:90,floor:4,number:"415",beds:[null,null]},{id:91,floor:4,number:"416",beds:[null,null]},{id:92,floor:4,number:"417",beds:[null,null]},{id:93,floor:4,number:"418",beds:[null,null]},{id:94,floor:4,number:"419",beds:[null,null]},{id:95,floor:4,number:"420",beds:[null,null]},{id:96,floor:4,number:"421",beds:[null,null]},{id:97,floor:4,number:"422",beds:[null,null]},{id:98,floor:4,number:"423",beds:[null,null]},{id:99,floor:4,number:"424",beds:[null,null]},{id:100,floor:4,number:"425",beds:[null,null]},{id:101,floor:5,number:"501",beds:[null,null]},{id:102,floor:5,number:"502",beds:[null,null]},{id:103,floor:5,number:"503",beds:[null,null]},{id:104,floor:5,number:"504",beds:[null,null]},{id:105,floor:5,number:"505",beds:[null,null]},{id:106,floor:5,number:"506",beds:[null,null]},{id:107,floor:5,number:"507",beds:[null,null]},{id:108,floor:5,number:"508",beds:[null,null]},{id:109,floor:5,number:"509",beds:[null,null]},{id:110,floor:5,number:"510",beds:[null,null]},{id:111,floor:5,number:"511",beds:[null,null]},{id:112,floor:5,number:"512",beds:[null,null]},{id:113,floor:5,number:"513",beds:[null,null]},{id:114,floor:5,number:"514",beds:[null,null]},{id:115,floor:5,number:"515",beds:[null,null]},{id:116,floor:5,number:"516",beds:[null,null]},{id:117,floor:5,number:"517",beds:[null,null]},{id:118,floor:5,number:"518",beds:[null,null]},{id:119,floor:5,number:"519",beds:[null,null]},{id:120,floor:5,number:"520",beds:[null,null]},{id:121,floor:5,number:"521",beds:[null,null]},{id:122,floor:5,number:"522",beds:[null,null]},{id:123,floor:5,number:"523",beds:[null,null]},{id:124,floor:5,number:"524",beds:[null,null]},{id:125,floor:5,number:"525",beds:[null,null]},{id:126,floor:6,number:"601",beds:[null,null]},{id:127,floor:6,number:"602",beds:[null,null]},{id:128,floor:6,number:"603",beds:[null,null]},{id:129,floor:6,number:"604",beds:[null,null]},{id:130,floor:6,number:"605",beds:[null,null]},{id:131,floor:6,number:"606",beds:[null,null]},{id:132,floor:6,number:"607",beds:[null,null]},{id:133,floor:6,number:"608",beds:[null,null]},{id:134,floor:6,number:"609",beds:[null,null]},{id:135,floor:6,number:"610",beds:[null,null]},{id:136,floor:6,number:"611",beds:[null,null]},{id:137,floor:6,number:"612",beds:[null,null]},{id:138,floor:6,number:"613",beds:[null,null]},{id:139,floor:6,number:"614",beds:[null,null]},{id:140,floor:6,number:"615",beds:[null,null]},{id:141,floor:6,number:"616",beds:[null,null]},{id:142,floor:6,number:"617",beds:[null,null]},{id:143,floor:6,number:"618",beds:[null,null]},{id:144,floor:6,number:"619",beds:[null,null]},{id:145,floor:6,number:"620",beds:[null,null]},{id:146,floor:6,number:"621",beds:[null,null]},{id:147,floor:6,number:"622",beds:[null,null]},{id:148,floor:6,number:"623",beds:[null,null]},{id:149,floor:6,number:"624",beds:[null,null]},{id:150,floor:6,number:"625",beds:[null,null]},{id:151,floor:7,number:"701",beds:[null,null]},{id:152,floor:7,number:"702",beds:[null,null]},{id:153,floor:7,number:"703",beds:[null,null]},{id:154,floor:7,number:"704",beds:[null,null]},{id:155,floor:7,number:"705",beds:[null,null]},{id:156,floor:7,number:"706",beds:[null,null]},{id:157,floor:7,number:"707",beds:[null,null]},{id:158,floor:7,number:"708",beds:[null,null]},{id:159,floor:7,number:"709",beds:[null,null]},{id:160,floor:7,number:"710",beds:[null,null]},{id:161,floor:7,number:"711",beds:[null,null]},{id:162,floor:7,number:"712",beds:[null,null]},{id:163,floor:7,number:"713",beds:[null,null]},{id:164,floor:7,number:"714",beds:[null,null]},{id:165,floor:7,number:"715",beds:[null,null]},{id:166,floor:7,number:"716",beds:[null,null]},{id:167,floor:7,number:"717",beds:[null,null]},{id:168,floor:7,number:"718",beds:[null,null]},{id:169,floor:7,number:"719",beds:[null,null]},{id:170,floor:7,number:"720",beds:[null,null]},{id:171,floor:7,number:"721",beds:[null,null]},{id:172,floor:7,number:"722",beds:[null,null]},{id:173,floor:7,number:"723",beds:[null,null]},{id:174,floor:7,number:"724",beds:[null,null]},{id:175,floor:7,number:"725",beds:[null,null]},{id:176,floor:8,number:"801",beds:[null,null]},{id:177,floor:8,number:"802",beds:[null,null]},{id:178,floor:8,number:"803",beds:[null,null]},{id:179,floor:8,number:"804",beds:[null,null]},{id:180,floor:8,number:"805",beds:[null,null]},{id:181,floor:8,number:"806",beds:[null,null]},{id:182,floor:8,number:"807",beds:[null,null]},{id:183,floor:8,number:"808",beds:[null,null]},{id:184,floor:8,number:"809",beds:[null,null]},{id:185,floor:8,number:"810",beds:[null,null]},{id:186,floor:8,number:"811",beds:[null,null]},{id:187,floor:8,number:"812",beds:[null,null]},{id:188,floor:8,number:"813",beds:[null,null]},{id:189,floor:8,number:"814",beds:[null,null]},{id:190,floor:8,number:"815",beds:[null,null]},{id:191,floor:8,number:"816",beds:[null,null]},{id:192,floor:8,number:"817",beds:[null,null]},{id:193,floor:8,number:"818",beds:[null,null]},{id:194,floor:8,number:"819",beds:[null,null]},{id:195,floor:8,number:"820",beds:[null,null]},{id:196,floor:8,number:"821",beds:[null,null]},{id:197,floor:8,number:"822",beds:[null,null]},{id:198,floor:8,number:"823",beds:[null,null]},{id:199,floor:8,number:"824",beds:[null,null]},{id:200,floor:8,number:"825",beds:[null,null]}], seq:201};
+}
+function save(){localStorage.setItem(KEY,JSON.stringify(state));}
+function uid(){return state.seq++;}
+const todayStr=()=>new Date().toISOString().slice(0,10);
+
+// ---- date helpers ----
+function fmt(d){if(!d)return'';const[y,m,day]=d.split('-');return`${day}.${m}.`;}
+function guestStatus(g){
+  const t=todayStr();
+  if(g.to&&g.to<t)return'over';
+  if(g.from&&g.from>t)return'up';
+  return'active';
+}
+
+// ---- room helpers ----
+function roomsOnFloor(f){return state.rooms.filter(r=>r.floor===f).sort((a,b)=>(''+a.number).localeCompare(''+b.number,undefined,{numeric:true}));}
+function bedsFilled(r){return r.beds.filter(Boolean).length;}
+function roomState(r){
+  const f=bedsFilled(r);
+  if(f===0)return'free';
+  const over=r.beds.some(g=>g&&guestStatus(g)==='over');
+  if(over)return'over';
+  return f>=r.beds.length?'full':'part';
+}
+const stateLabel={free:'Voľná',part:'Čiastočne',full:'Obsadená',over:'Po termíne'};
+
+// ---- render ----
+function render(){renderFloors();renderStats();renderAlerts();renderContent();save();}
+
+function renderFloors(){
+  const el=document.getElementById('floors');el.innerHTML='';
+  for(let f=FLOORS;f>=1;f--){
+    const rs=roomsOnFloor(f);
+    const b=document.createElement('button');
+    b.className='floor-btn'+(f===activeFloor?' active':'');
+    b.innerHTML=`<span class="n">${f}.</span><span class="cnt">${rs.length} ${rs.length===1?'izba':(rs.length>=2&&rs.length<=4?'izby':'izieb')}</span>`;
+    b.onclick=()=>{activeFloor=f;query='';document.getElementById('search').value='';render();};
+    el.appendChild(b);
+  }
+}
+
+function allBeds(){let a=0,used=0;state.rooms.forEach(r=>{a+=r.beds.length;used+=bedsFilled(r);});return{a,used};}
+
+function renderStats(){
+  const {a,used}=allBeds();
+  const pct=a?Math.round(used/a*100):0;
+  document.getElementById('ms-free').textContent=a-used;
+  document.getElementById('ms-occ').textContent=pct+'%';
+  const t=todayStr();
+  const ins=[],outs=[];
+  state.rooms.forEach(r=>r.beds.forEach(g=>{if(!g)return;if(g.from===t)ins.push(g);if(g.to===t)outs.push(g);}));
+  document.getElementById('stats').innerHTML=`
+    <div class="stat"><div class="lab">Izby celkom</div><div class="val">${state.rooms.length}</div><div class="sub">na 8 poschodiach</div></div>
+    <div class="stat"><div class="lab">Obsadené lôžka</div><div class="val">${used}<span style="font-size:15px;color:var(--muted)"> / ${a}</span></div><div class="bar"><i style="width:${pct}%"></i></div></div>
+    <div class="stat"><div class="lab">Voľné lôžka</div><div class="val">${a-used}</div><div class="sub">pripravené na hosťa</div></div>
+    <div class="stat"><div class="lab">Dnes</div><div class="val">${ins.length}<span style="font-size:14px;color:var(--muted)"> ↓</span> ${outs.length}<span style="font-size:14px;color:var(--muted)"> ↑</span></div><div class="sub">príchody / odchody</div></div>`;
+}
+
+function renderAlerts(){
+  const t=todayStr();const el=document.getElementById('alerts');const chips=[];
+  let ins=0,outs=0,over=0;
+  state.rooms.forEach(r=>r.beds.forEach(g=>{if(!g)return;if(g.from===t)ins++;if(g.to===t)outs++;if(g.to&&g.to<t)over++;}));
+  if(ins)chips.push(`<span class="chip in"><span class="dot"></span>${ins} príchod${ins>1?'y':''} dnes</span>`);
+  if(outs)chips.push(`<span class="chip out"><span class="dot"></span>${outs} odchod${outs>1?'y':''} dnes</span>`);
+  if(over)chips.push(`<span class="chip over"><span class="dot"></span>${over} hosť po termíne</span>`);
+  el.innerHTML=chips.join('');
+}
+
+function matchQuery(g){return query&&g&&g.name.toLowerCase().includes(query.toLowerCase());}
+
+function renderContent(){
+  document.getElementById('tb-floor').textContent=activeFloor;
+  const c=document.getElementById('content');
+
+  // search across all floors
+  if(query){
+    const hits=[];
+    state.rooms.forEach(r=>r.beds.forEach((g,i)=>{if(matchQuery(g))hits.push({r,g,i});}));
+    document.getElementById('fh-title').textContent='Výsledky hľadania';
+    document.getElementById('fh-sub').textContent=`„${query}" — ${hits.length} nájdených`;
+    document.getElementById('tb-count').textContent='';
+    if(!hits.length){c.innerHTML=`<div class="empty-floor"><p>Nikto s menom „${query}" nie je ubytovaný.</p></div>`;return;}
+    const grid=document.createElement('div');grid.className='grid';
+    const seen=new Set();
+    hits.forEach(h=>{if(seen.has(h.r.id))return;seen.add(h.r.id);grid.appendChild(roomCard(h.r,true));});
+    c.innerHTML='';c.appendChild(grid);return;
+  }
+
+  const rs=roomsOnFloor(activeFloor);
+  document.getElementById('fh-title').textContent=activeFloor+'. poschodie';
+  const {used,total}=(()=>{let used=0,total=0;rs.forEach(r=>{used+=bedsFilled(r);total+=r.beds.length;});return{used,total};})();
+  document.getElementById('fh-sub').textContent=rs.length?`${rs.length} izieb · ${used}/${total} lôžok obsadených`:'';
+  document.getElementById('tb-count').textContent=rs.length?` · ${rs.length} izieb`:'';
+
+  if(!rs.length){
+    c.innerHTML=`<div class="empty-floor">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 21V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14"/><path d="M3 21h18M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></svg>
+      <p>Na tomto poschodí zatiaľ nie sú žiadne izby.<br>Pridaj prvú tlačidlom „Pridať izbu".</p></div>`;
+    return;
+  }
+  const grid=document.createElement('div');grid.className='grid';
+  rs.forEach(r=>grid.appendChild(roomCard(r,false)));
+  c.innerHTML='';c.appendChild(grid);
+}
+
+function roomCard(r,hit){
+  const st=roomState(r);
+  const card=document.createElement('div');
+  card.className='room'+(hit?' hit':'');
+  const top=document.createElement('div');top.className='room-top';
+  top.innerHTML=`<div class="room-num"><span class="no">${r.number}</span><span class="tag">${r.beds.length} lôžka</span></div>
+    <span class="status ${st}">${stateLabel[st]}</span>`;
+  card.appendChild(top);
+
+  const beds=document.createElement('div');beds.className='beds';
+  r.beds.forEach((g,i)=>{
+    const bed=document.createElement('div');
+    if(!g){
+      bed.className='bed empty';
+      bed.innerHTML=`<span>Lôžko ${i+1} — voľné</span>`;
+      const add=document.createElement('button');
+      add.innerHTML=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg> Ubytovať`;
+      add.onclick=()=>openGuest(r.id,i);
+      bed.appendChild(add);
+    }else{
+      const gs=guestStatus(g);
+      bed.className='bed filled '+(gs==='active'?'active':gs==='over'?'over':'');
+      const dotCls=gs==='active'?'active':gs==='over'?'over':'up';
+      const badge=gs==='over'?' · po termíne':gs==='up'?' · budúci':'';
+      bed.innerHTML=`
+        <div class="g-name"><span class="st-dot ${dotCls}"></span>${esc(g.name)}</div>
+        <div class="g-dates">${fmt(g.from)} – ${fmt(g.to)}${badge}</div>
+        ${g.note?`<div class="g-note">${esc(g.note)}</div>`:''}
+        <div class="g-actions"></div>`;
+      const act=bed.querySelector('.g-actions');
+      act.appendChild(mkBtn('Upraviť',()=>openGuest(r.id,i,g)));
+      act.appendChild(mkBtn('Presunúť',()=>openMove(r.id,i)));
+      const del=mkBtn('Odhlásiť',()=>{if(confirm(`Odhlásiť hosťa ${g.name} z izby ${r.number}?`)){r.beds[i]=null;render();}});
+      del.classList.add('del');act.appendChild(del);
+    }
+    beds.appendChild(bed);
+  });
+  card.appendChild(beds);
+
+  const foot=document.createElement('div');foot.className='room-foot';
+  const delR=document.createElement('button');delR.textContent='Zmazať izbu';
+  delR.onclick=()=>{
+    if(bedsFilled(r)>0){alert('Izbu nemožno zmazať — najprv odhlás všetkých hostí.');return;}
+    if(confirm(`Zmazať izbu ${r.number}?`)){state.rooms=state.rooms.filter(x=>x.id!==r.id);render();}
+  };
+  foot.appendChild(delR);card.appendChild(foot);
+  return card;
+}
+function mkBtn(t,fn){const b=document.createElement('button');b.textContent=t;b.onclick=fn;return b;}
+function esc(s){return(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+// ---- guest modal ----
+let gCtx=null;
+function openGuest(roomId,bedIdx,existing){
+  gCtx={roomId,bedIdx};
+  const r=state.rooms.find(x=>x.id===roomId);
+  document.getElementById('gm-title').textContent=existing?'Upraviť hosťa':'Ubytovať hosťa';
+  document.getElementById('gm-sub').textContent=`Izba ${r.number} · lôžko ${bedIdx+1}`;
+  document.getElementById('gm-name').value=existing?existing.name:'';
+  document.getElementById('gm-from').value=existing?existing.from:todayStr();
+  document.getElementById('gm-to').value=existing?existing.to:'';
+  document.getElementById('gm-note').value=existing?(existing.note||''):'';
+  document.getElementById('gm-err').classList.remove('on');
+  show('guestOverlay');
+  setTimeout(()=>document.getElementById('gm-name').focus(),50);
+}
+document.getElementById('gm-save').onclick=()=>{
+  const name=document.getElementById('gm-name').value.trim();
+  const from=document.getElementById('gm-from').value;
+  const to=document.getElementById('gm-to').value;
+  const note=document.getElementById('gm-note').value.trim();
+  const err=document.getElementById('gm-err');
+  if(!name){return showErr(err,'Zadaj meno hosťa.');}
+  if(!from||!to){return showErr(err,'Vyplň dátum príchodu aj odchodu.');}
+  if(to<from){return showErr(err,'Dátum odchodu musí byť po dátume príchodu.');}
+  const r=state.rooms.find(x=>x.id===gCtx.roomId);
+  r.beds[gCtx.bedIdx]={name,from,to,note};
+  hide('guestOverlay');render();
+};
+
+// ---- room modal ----
+document.getElementById('addRoomBtn').onclick=()=>{
+  document.getElementById('rm-sub').textContent=`Nová izba na ${activeFloor}. poschodí`;
+  document.getElementById('rm-num').value=activeFloor+'0'+(roomsOnFloor(activeFloor).length+1);
+  document.getElementById('rm-beds').value='2';
+  document.getElementById('rm-err').classList.remove('on');
+  show('roomOverlay');
+  setTimeout(()=>document.getElementById('rm-num').select(),50);
+};
+document.getElementById('rm-save').onclick=()=>{
+  const num=document.getElementById('rm-num').value.trim();
+  const beds=+document.getElementById('rm-beds').value;
+  const err=document.getElementById('rm-err');
+  if(!num){return showErr(err,'Zadaj číslo izby.');}
+  if(state.rooms.some(r=>r.floor===activeFloor&&(''+r.number)===num)){return showErr(err,'Izba s týmto číslom už na poschodí existuje.');}
+  state.rooms.push({id:uid(),floor:activeFloor,number:num,beds:Array(beds).fill(null)});
+  hide('roomOverlay');render();
+};
+
+// ---- move modal ----
+let mvCtx=null;
+function openMove(roomId,bedIdx){
+  mvCtx={roomId,bedIdx};
+  const r=state.rooms.find(x=>x.id===roomId);const g=r.beds[bedIdx];
+  document.getElementById('mv-sub').textContent=`${g.name} · z izby ${r.number}, lôžko ${bedIdx+1}`;
+  const list=document.getElementById('mv-list');list.innerHTML='';
+  let any=false;
+  for(let f=1;f<=FLOORS;f++){
+    const rs=roomsOnFloor(f);
+    const opts=[];
+    rs.forEach(room=>room.beds.forEach((b,i)=>{
+      if(b)return; if(room.id===roomId&&i===bedIdx)return;
+      opts.push({room,i});
+    }));
+    if(!opts.length)continue;
+    any=true;
+    const grp=document.createElement('div');grp.className='move-grp';grp.textContent=f+'. poschodie';list.appendChild(grp);
+    opts.forEach(({room,i})=>{
+      const b=document.createElement('button');b.className='move-opt';
+      b.innerHTML=`<b>Izba ${room.number}</b><span>lôžko ${i+1}${room.id===roomId?' (tá istá izba)':''}</span>`;
+      b.onclick=()=>{room.beds[i]=g;r.beds[bedIdx]=null;hide('moveOverlay');render();};
+      list.appendChild(b);
+    });
+  }
+  if(!any)list.innerHTML=`<div class="move-empty">Žiadne voľné lôžko na presun.<br>Najprv pridaj izbu alebo uvoľni lôžko.</div>`;
+  show('moveOverlay');
+}
+
+// ---- utils ----
+function show(id){document.getElementById(id).classList.add('on');}
+function hide(id){document.getElementById(id).classList.remove('on');}
+function showErr(el,msg){el.textContent=msg;el.classList.add('on');}
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=e=>e.target.closest('.overlay').classList.remove('on'));
+document.querySelectorAll('.overlay').forEach(o=>o.onclick=e=>{if(e.target===o)o.classList.remove('on');});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.overlay.on').forEach(o=>o.classList.remove('on'));});
+document.getElementById('search').oninput=e=>{query=e.target.value.trim();renderContent();};
+
+render();
+</script>
+</body>
+</html>
